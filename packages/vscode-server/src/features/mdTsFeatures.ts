@@ -37,7 +37,7 @@ export function register(
       const diagnostics: Diagnostic[] = [];
       if (virtualFile) {
         for (const { uri, lang } of virtualFile) {
-          if (lang === 'tsx' || lang === 'ts') {
+          if (lang === 'tsx' || lang === 'ts' || lang === 'typescript') {
             diagnostics.push(...service.doValidation(uri, {
               semantic: true,
               syntactic: true,
@@ -47,6 +47,7 @@ export function register(
           }
         }
       }
+
       connection.sendDiagnostics({
         uri: doc.uri,
         diagnostics,
