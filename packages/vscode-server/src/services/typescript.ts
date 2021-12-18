@@ -15,43 +15,42 @@ import * as fg from 'fast-glob';
 import * as path from 'path';
 
 export function createTypeScriptService(
-  ts: typeof import('typescript/lib/tsserverlibrary'),
+  ts:        typeof import('typescript/lib/tsserverlibrary'),
   documents: TextDocuments<TextDocument>,
-  folders: string[],
+  folders:   string[],
 ) {
+
   let projectVersion = 0;
+
   const tsConfigNames = ['tsconfig.json', 'jsconfig.json'];
-  const snapshots = new Map<
-  string,
-  {
+
+  const snapshots = new Map<string, {
     version: string;
     snapshot: ts.IScriptSnapshot;
-  }
-  >();
+  }>();
 
   const tsConfigSet = new Set(
     folders
       .map((folder) => ts.sys.readDirectory(folder, tsConfigNames, undefined, ['**/*']))
       .flat(),
   );
+
   const tsConfigs = [...tsConfigSet].filter((tsConfig) => tsConfigNames.includes(path.basename(tsConfig)));
+
   let parsedCommandLine: ts.ParsedCommandLine | undefined;
-  const mdMap = new Map<
-  string,
-  {
+
+  const mdMap = new Map<string, {
     version: number;
     fileName: string;
-    parsedMarkdowns?: ParsedMarkdown[];
-  }
-  >();
-  const virtualMap = new Map<
-  string,
-  {
+    codeBlocks?: ParsedMarkdown[];
+  }>();
+
+  const virtualMap = new Map<string, {
     originUri: string;
     blockIndex: number;
     version: number;
-  }
-  >();
+  }>();
+
   const tsFiles = new Map<string, { version: number; fileName: string }>();
   // const documentsMap = new Map<
   // string,
@@ -77,7 +76,7 @@ export function createTypeScriptService(
     for (const [markdown] of mdMap) {
       if (!mdSet.has(markdown)) {
         const value = mdMap.get(markdown);
-        value?.parsedMarkdowns?.forEach(({ language }, i) => {
+        value?.codeBlocks?.forEach(({ language }, i) => {
           virtualMap.delete(toVirtualPath(markdown, i, language));
         });
         mdMap.delete(markdown);
@@ -150,7 +149,7 @@ export function createTypeScriptService(
       getScriptFileNames: () => [
         ...(parsedCommandLine?.fileNames || []),
         ...[...mdMap.values()]
-          .map(({ fileName, parsedMarkdowns = [] }) => parsedMarkdowns.map((_, i) => toVirtualPath(fileName, i)))
+          .map(({ fileName, codeBlocks = [] }) => codeBlocks.map((_, i) => toVirtualPath(fileName, i)))
           .flat(),
       ],
       getScriptVersion,
@@ -198,8 +197,8 @@ export function createTypeScriptService(
       const { originUri, blockIndex } = virtual;
       const markdown = mdMap.get(uriToFsPath(originUri));
       if (markdown) {
-        const { parsedMarkdowns = [] } = markdown;
-        return parsedMarkdowns[blockIndex].content;
+        const { codeBlocks = [] } = markdown;
+        return codeBlocks[blockIndex].content;
       }
     }
     const doc = documents.get(fsPathToUri(fileName));
@@ -219,20 +218,20 @@ export function createTypeScriptService(
     const markdown = mdMap.get(fsPath);
 
     if (markdown) {
-      const { parsedMarkdowns = [] } = markdown;
+      const { codeBlocks = [] } = markdown;
       if (position) {
-        const blockIndex = parsedMarkdowns.findIndex(
+        const blockIndex = codeBlocks.findIndex(
           ({ location }) => location.start!.line <= position.line
             && location.end!.line >= position.line,
         );
         if (blockIndex !== -1) {
           return {
             uri: fsPathToUri(toVirtualPath(fsPath, blockIndex)),
-            lang: parsedMarkdowns[blockIndex].language,
+            lang: codeBlocks[blockIndex].language,
           };
         }
       } else {
-        return parsedMarkdowns.map(({ language }, index) => ({
+        return codeBlocks.map(({ language }, index) => ({
           uri: fsPathToUri(toVirtualPath(fsPath, index)),
           lang: language,
         }));
@@ -249,10 +248,10 @@ export function createTypeScriptService(
     const markdown = mdMap.get(fsPath);
     const fileNames: string[] = [];
     if (markdown) {
-      const parsedMarkdowns = parse(document.getText());
-      if (parsedMarkdowns.length) {
-        Object.assign(markdown, { parsedMarkdowns });
-        parsedMarkdowns.forEach((_, blockIndex) => {
+      const codeBlocks = parse(document.getText(), true);
+      if (codeBlocks.length) {
+        Object.assign(markdown, { codeBlocks });
+        codeBlocks.forEach((_, blockIndex) => {
           const fileName = toVirtualPath(fsPath, blockIndex);
           if (!virtualMap.has(fileName)) {
             virtualMap.set(fileName, {
@@ -274,7 +273,7 @@ export function createTypeScriptService(
       if (snapshot) {
         const snapshotLength = snapshot.snapshot.getLength();
         const documentText = markdown
-          ? (markdown.parsedMarkdowns || [])[
+          ? (markdown.codeBlocks || [])[
             virtualMap.get(fileName)!.blockIndex
           ].content
           : document.getText();

@@ -15,17 +15,17 @@ function isBlock(source: string, cursor: number) {
 }
 
 /** Extract embedded code blocks from Markdown file. */
-export function parse (source: string): ParsedMarkdown[] {
+export function parse (source: string, singleFile = false): ParsedMarkdown[] {
 
   // This is our final result: a collection of the extracted code blocks.
   // Each block is annotated with its language, and its start and end locations.
   // A "virtual file" is created out of each code block.
-  const codeBlocks: ParsedMarkdown[] = [];
+  let codeBlocks: ParsedMarkdown[] = [];
 
   // This is the result buffer. It is an array of characters, which
   // corresponds to the source string, but only contains the characters
   // from the current code block; the rest are replaced with spaces.
-  const codeBlockContent: string[]   = [];
+  let codeBlockContent: string[] = [];
 
   let charIndex = 0;
   let line      = 0;
@@ -132,6 +132,46 @@ export function parse (source: string): ParsedMarkdown[] {
       continue
 
     }
+  }
+
+  // Tacked-on single-file mode.
+  // If enabled, the extracted code blocks are replaced with one single code block,
+  // which has the start location and language of the first extracted code block,
+  // the end location of the last one, and the combined content of all.
+  // This would be more performant belongs in the main algorithm.
+  if (singleFile && codeBlocks.length > 0) {
+
+    // Take the start and language of the first code block, the end of the last one,
+    // and the content of the source code with all non-newline characters replaced by spaces.
+    const mergedCodeBlocks: ParsedMarkdown[] = [{
+      location: {
+        start: codeBlocks[0].location.start,
+        end:   codeBlocks[codeBlocks.length-1].location.end
+      },
+      content:  [...source].map(x=>x === '\n'?x:' ').join(),
+      language: codeBlocks[0].language
+    }];
+
+    // Copy the content of each extracted code block into the merged code block.
+    for (const {content} of codeBlocks) {
+      for (let charIndex = 0; charIndex < content.length; charIndex++) {
+        // Since the result buffer is cleared between code blocks,
+        // each individual code block has spaces in the place of the
+        // content of the other code blocks.
+        // Checking that the current position of the merged code block contains a space
+        // makes sure that  subsequent code blocks don't overwrite the content of
+        // previous ones with spaces.
+        // The number of words needed to explain this is a direct result of the overall
+        // "upside-down-ness" of implementing this in a the current non-optimal way,
+        // i.e. by merging code blocks at the end instead of directly
+        // generating the merged code block in the first iteration.
+        if (mergedCodeBlocks[0].content[charIndex] === ' ') {
+          mergedCodeBlocks[0].content[charIndex] === content[charIndex]
+        }
+      }
+    }
+
+    return mergedCodeBlocks
   }
 
   return codeBlocks;

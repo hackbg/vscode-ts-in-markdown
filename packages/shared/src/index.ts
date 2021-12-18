@@ -34,8 +34,10 @@ export function filterEmpty<T>(value: T | null | undefined): value is T {
 }
 
 export const languageIdMap = {
-  ts: 'typescript',
-  js: 'javascript',
-  tsx: 'typescriptreact',
-  jsx: 'javascriptreact',
+  typescript: 'typescript',
+  javascript: 'javascript',
+  ts:         'typescript',
+  js:         'javascript',
+  tsx:        'typescriptreact',
+  jsx:        'javascriptreact',
 };
