@@ -16,8 +16,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
 
   client = new lsp.LanguageClient(
-    'ts-in-markdown Markdown',
-    'markdown',
+    'Ganesha Markdown',
+    'Ganesha Markdown',
     {
       run:   { module, transport },
       debug: { module, transport, options: debugOptions, },
@@ -30,7 +30,7 @@ export async function activate(context: vscode.ExtensionContext) {
         { scheme: 'file', language: 'javascript' },
         { scheme: 'file', language: 'javascriptreact' },
       ],
-      initializationOptions: { appRoot: vscode.env.appRoot, }
+      initializationOptions: { appRoot: vscode.env.appRoot } as ServerInitializationOptions
     }
   );
 
