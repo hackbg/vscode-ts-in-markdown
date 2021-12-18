@@ -143,14 +143,16 @@ export function parse (source: string, singleFile = false): ParsedMarkdown[] {
 
     // Take the start and language of the first code block, the end of the last one,
     // and the content of the source code with all non-newline characters replaced by spaces.
-    const mergedCodeBlocks: ParsedMarkdown[] = [{
+    const mergedContent: string[] = [...source].map(x=>x === '\n'?x:' ');
+    const mergedCodeBlock: ParsedMarkdown = {
+      content: '',
+      language: codeBlocks[0].language,
       location: {
         start: codeBlocks[0].location.start,
         end:   codeBlocks[codeBlocks.length-1].location.end
       },
-      content:  [...source].map(x=>x === '\n'?x:' ').join(),
-      language: codeBlocks[0].language
-    }];
+    };
+
 
     // Copy the content of each extracted code block into the merged code block.
     for (const {content} of codeBlocks) {
@@ -165,13 +167,15 @@ export function parse (source: string, singleFile = false): ParsedMarkdown[] {
         // "upside-down-ness" of implementing this in a the current non-optimal way,
         // i.e. by merging code blocks at the end instead of directly
         // generating the merged code block in the first iteration.
-        if (mergedCodeBlocks[0].content[charIndex] === ' ') {
-          mergedCodeBlocks[0].content[charIndex] === content[charIndex]
+        if (mergedContent[charIndex] === ' ') {
+          mergedContent[charIndex] = content[charIndex]
         }
       }
     }
 
-    return mergedCodeBlocks
+    mergedCodeBlock.content = mergedContent.join('')
+
+    return [mergedCodeBlock]
   }
 
   return codeBlocks;
